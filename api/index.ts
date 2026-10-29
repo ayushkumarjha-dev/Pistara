@@ -1,64 +1,32 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { handleRequest } from "../server-lib/http";
 
 // Import all route handlers
-import * as authLogin from "./auth/login";
-import * as authRegister from "./auth/register";
-import * as authLogout from "./auth/logout";
-import * as authMe from "./auth/me";
-import * as authForgot from "./auth/forgot";
-import * as authReset from "./auth/reset";
+import authLogin from "./auth/login";
+import authRegister from "./auth/register";
+import authLogout from "./auth/logout";
+import authMe from "./auth/me";
+import authForgot from "./auth/forgot";
+import authReset from "./auth/reset";
 
-import * as productsIndex from "./products/index";
-import * as productsSlug from "./products/[slug]";
+import productsIndex from "./products/index";
+import productsSlug from "./products/[slug]";
 
-import * as ordersIndex from "./orders/index";
-import * as ordersId from "./orders/[id]";
+import ordersIndex from "./orders/index";
+import ordersId from "./orders/[id]";
 
-import * as categories from "./categories";
-import * as profile from "./profile";
-import * as settings from "./settings";
+import categories from "./categories";
+import profile from "./profile";
+import settings from "./settings";
 
 // Admin routes
-import * as adminCustomersIndex from "./admin/customers/index";
-import * as adminCustomersId from "./admin/customers/[id]";
-import * as adminOrdersIndex from "./admin/orders/index";
-import * as adminOrdersId from "./admin/orders/[id]";
-import * as adminProductsIndex from "./admin/products/index";
-import * as adminProductsId from "./admin/products/[id]";
-import * as adminSettings from "./admin/settings";
-import * as adminStats from "./admin/stats";
-
-// Route mapping
-const routes: Record<string, any> = {
-  // Auth routes
-  "POST /api/auth/login": authLogin,
-  "POST /api/auth/register": authRegister,
-  "POST /api/auth/logout": authLogout,
-  "GET /api/auth/me": authMe,
-  "POST /api/auth/forgot": authForgot,
-  "POST /api/auth/reset": authReset,
-
-  // Public routes
-  "GET /api/products": productsIndex,
-  "GET /api/categories": categories,
-  "GET /api/settings": settings,
-
-  // Authenticated user routes
-  "GET /api/profile": profile,
-  "PUT /api/profile": profile,
-  "POST /api/orders": ordersIndex,
-  "GET /api/orders": ordersIndex,
-
-  // Admin routes
-  "GET /api/admin/customers": adminCustomersIndex,
-  "GET /api/admin/orders": adminOrdersIndex,
-  "GET /api/admin/products": adminProductsIndex,
-  "POST /api/admin/products": adminProductsIndex,
-  "GET /api/admin/settings": adminSettings,
-  "PUT /api/admin/settings": adminSettings,
-  "GET /api/admin/stats": adminStats,
-};
+import adminCustomersIndex from "./admin/customers/index";
+import adminCustomersId from "./admin/customers/[id]";
+import adminOrdersIndex from "./admin/orders/index";
+import adminOrdersId from "./admin/orders/[id]";
+import adminProductsIndex from "./admin/products/index";
+import adminProductsId from "./admin/products/[id]";
+import adminSettings from "./admin/settings";
+import adminStats from "./admin/stats";
 
 export default async function handler(
   req: VercelRequest,
@@ -68,58 +36,109 @@ export default async function handler(
     const method = req.method || "GET";
     let path = req.url || "/";
 
-    // Extract dynamic parameters from path
-    const slugMatch = path.match(/\/api\/products\/([^\/]+)/);
-    const orderIdMatch = path.match(/\/api\/orders\/([^\/]+)/);
-    const adminCustomerIdMatch = path.match(/\/api\/admin\/customers\/([^\/]+)/);
-    const adminOrderIdMatch = path.match(/\/api\/admin\/orders\/([^\/]+)/);
-    const adminProductIdMatch = path.match(/\/api\/admin\/products\/([^\/]+)/);
-
-    // Normalize path for routing
-    if (slugMatch && slugMatch[1]) {
-      path = "/api/products/[slug]";
-      req.query = { ...req.query, slug: slugMatch[1] };
-    } else if (orderIdMatch && orderIdMatch[1] && !path.includes("/admin/")) {
-      path = "/api/orders/[id]";
-      req.query = { ...req.query, id: orderIdMatch[1] };
-    } else if (adminCustomerIdMatch && adminCustomerIdMatch[1]) {
-      path = "/api/admin/customers/[id]";
-      req.query = { ...req.query, id: adminCustomerIdMatch[1] };
-    } else if (adminOrderIdMatch && adminOrderIdMatch[1]) {
-      path = "/api/admin/orders/[id]";
-      req.query = { ...req.query, id: adminOrderIdMatch[1] };
-    } else if (adminProductIdMatch && adminProductIdMatch[1]) {
-      path = "/api/admin/products/[id]";
-      req.query = { ...req.query, id: adminProductIdMatch[1] };
-    }
-
     // Remove query string from path
-    path = path.split("?")[0];
+    const pathWithoutQuery = path.split("?")[0];
 
-    const routeKey = `${method} ${path}`;
-    const handler = routes[routeKey];
-
-    if (!handler) {
-      // Try to match dynamic routes
-      if (slugMatch) {
-        return await productsSlug.default(req, res);
-      } else if (orderIdMatch && !path.includes("/admin/")) {
-        return await ordersId.default(req, res);
-      } else if (adminCustomerIdMatch) {
-        return await adminCustomersId.default(req, res);
-      } else if (adminOrderIdMatch) {
-        return await adminOrdersId.default(req, res);
-      } else if (adminProductIdMatch) {
-        return await adminProductsId.default(req, res);
-      }
-
-      return res.status(404).json({
-        error: "NOT_FOUND",
-        message: `Route ${routeKey} not found`,
-      });
+    // Route matching with dynamic parameters
+    
+    // Auth routes
+    if (method === "POST" && pathWithoutQuery === "/api/auth/login") {
+      return await authLogin(req, res);
+    }
+    if (method === "POST" && pathWithoutQuery === "/api/auth/register") {
+      return await authRegister(req, res);
+    }
+    if (method === "POST" && pathWithoutQuery === "/api/auth/logout") {
+      return await authLogout(req, res);
+    }
+    if (method === "GET" && pathWithoutQuery === "/api/auth/me") {
+      return await authMe(req, res);
+    }
+    if (method === "POST" && pathWithoutQuery === "/api/auth/forgot") {
+      return await authForgot(req, res);
+    }
+    if (method === "POST" && pathWithoutQuery === "/api/auth/reset") {
+      return await authReset(req, res);
     }
 
-    return await handler.default(req, res);
+    // Public routes
+    if (method === "GET" && pathWithoutQuery === "/api/categories") {
+      return await categories(req, res);
+    }
+    if (method === "GET" && pathWithoutQuery === "/api/settings") {
+      return await settings(req, res);
+    }
+
+    // Products
+    if (method === "GET" && pathWithoutQuery === "/api/products") {
+      return await productsIndex(req, res);
+    }
+    const productSlugMatch = pathWithoutQuery.match(/^\/api\/products\/([^\/]+)$/);
+    if (method === "GET" && productSlugMatch) {
+      req.query = { ...req.query, slug: productSlugMatch[1] };
+      return await productsSlug(req, res);
+    }
+
+    // Profile
+    if ((method === "GET" || method === "PUT") && pathWithoutQuery === "/api/profile") {
+      return await profile(req, res);
+    }
+
+    // Orders
+    if ((method === "GET" || method === "POST") && pathWithoutQuery === "/api/orders") {
+      return await ordersIndex(req, res);
+    }
+    const orderIdMatch = pathWithoutQuery.match(/^\/api\/orders\/([^\/]+)$/);
+    if (method === "GET" && orderIdMatch) {
+      req.query = { ...req.query, id: orderIdMatch[1] };
+      return await ordersId(req, res);
+    }
+
+    // Admin - Customers
+    if (method === "GET" && pathWithoutQuery === "/api/admin/customers") {
+      return await adminCustomersIndex(req, res);
+    }
+    const adminCustomerIdMatch = pathWithoutQuery.match(/^\/api\/admin\/customers\/([^\/]+)$/);
+    if (adminCustomerIdMatch && (method === "GET" || method === "PUT" || method === "DELETE")) {
+      req.query = { ...req.query, id: adminCustomerIdMatch[1] };
+      return await adminCustomersId(req, res);
+    }
+
+    // Admin - Orders
+    if (method === "GET" && pathWithoutQuery === "/api/admin/orders") {
+      return await adminOrdersIndex(req, res);
+    }
+    const adminOrderIdMatch = pathWithoutQuery.match(/^\/api\/admin\/orders\/([^\/]+)$/);
+    if (adminOrderIdMatch && (method === "GET" || method === "PUT")) {
+      req.query = { ...req.query, id: adminOrderIdMatch[1] };
+      return await adminOrdersId(req, res);
+    }
+
+    // Admin - Products
+    if ((method === "GET" || method === "POST") && pathWithoutQuery === "/api/admin/products") {
+      return await adminProductsIndex(req, res);
+    }
+    const adminProductIdMatch = pathWithoutQuery.match(/^\/api\/admin\/products\/([^\/]+)$/);
+    if (adminProductIdMatch && (method === "GET" || method === "PUT" || method === "DELETE")) {
+      req.query = { ...req.query, id: adminProductIdMatch[1] };
+      return await adminProductsId(req, res);
+    }
+
+    // Admin - Settings
+    if ((method === "GET" || method === "PUT") && pathWithoutQuery === "/api/admin/settings") {
+      return await adminSettings(req, res);
+    }
+
+    // Admin - Stats
+    if (method === "GET" && pathWithoutQuery === "/api/admin/stats") {
+      return await adminStats(req, res);
+    }
+
+    // Route not found
+    return res.status(404).json({
+      error: "NOT_FOUND",
+      message: `Route ${method} ${pathWithoutQuery} not found`,
+    });
   } catch (error: any) {
     console.error("API Error:", error);
     return res.status(500).json({

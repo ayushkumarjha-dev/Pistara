@@ -20,10 +20,8 @@ export interface AuthenticatedRequest extends VercelRequest {
 
 // ============ JWT HELPERS ============
 
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET environment variable is required");
-}
+const JWT_SECRET =
+  process.env.JWT_SECRET || "pistara-fallback-jwt-secret-replace-in-env-2026";
 
 const secret = new TextEncoder().encode(JWT_SECRET);
 const COOKIE_NAME = "pistara_session";

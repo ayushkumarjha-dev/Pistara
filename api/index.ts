@@ -1,3 +1,4 @@
+import "dotenv/config";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 // Import all route handlers

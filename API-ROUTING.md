@@ -7,17 +7,18 @@ This project uses a **single consolidated API handler** at `/api/index.ts` to co
 
 ### Single Entry Point
 - **File**: `/api/index.ts`
-- **Purpose**: Routes all API requests to their respective handlers
+- **Handlers**: `/api-handlers/*`
+- **Purpose**: Routes all API requests to their respective handlers located in `api-handlers/`
 - **Benefits**: 
-  - Complies with Vercel Hobby plan (1 function instead of 40+)
+  - Complies with Vercel Hobby plan (only 1 serverless function created from `/api/index.ts` instead of multiple separate endpoints)
   - Centralized routing logic
   - Easy to maintain and debug
 
 ### How It Works
 
 1. All requests to `/api/*` are rewritten to `/api` (configured in `vercel.json`)
-2. The handler at `/api/index.ts` matches the request method and path
-3. Routes to the appropriate handler function
+2. The single function at `/api/index.ts` matches the request method and path
+3. Routes to the appropriate handler function in `/api-handlers/*`
 4. Returns the response
 
 ## Supported Routes

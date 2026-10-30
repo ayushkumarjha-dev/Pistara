@@ -158,8 +158,8 @@ export default handler(async (req: VercelRequest, res: VercelResponse) => {
 
   // Pagination
   const total = results.length;
-  const page = query.page;
-  const limit = query.limit;
+  const page = query.page ?? 1;
+  const limit = query.limit ?? 20;
   const offset = (page - 1) * limit;
   const paginatedResults = results.slice(offset, offset + limit);
 

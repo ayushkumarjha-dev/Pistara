@@ -64,7 +64,7 @@ export default handler(async (req: VercelRequest, res: VercelResponse) => {
   // Fetch order stats
   const [stats] = await db
     .select({
-      orderCount: db.$count(),
+      orderCount: sql<number>`count(*)`,
       totalSpent: sql<number>`COALESCE(SUM(${orders.total}), 0)`,
     })
     .from(orders)

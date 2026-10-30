@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { ZodError, type ZodSchema } from "zod";
+import { ZodError, type ZodSchema, type z } from "zod";
 
 // ============ TYPES ============
 
-export type Handler = (req: VercelRequest, res: VercelResponse) => Promise<void>;
+export type Handler = (req: VercelRequest, res: VercelResponse) => Promise<unknown> | unknown;
 
 export interface ApiError {
   code: string;
@@ -139,10 +139,10 @@ export function handler(fn: Handler): Handler {
 
 // ============ BODY PARSER ============
 
-export async function parseBody<T>(
+export async function parseBody<T extends z.ZodTypeAny>(
   req: VercelRequest,
-  schema?: ZodSchema<T>
-): Promise<T> {
+  schema?: T
+): Promise<z.output<T>> {
   // Vercel already parses JSON body into req.body
   const body = req.body;
 
@@ -157,12 +157,12 @@ export async function parseBody<T>(
     return schema.parse(body);
   }
 
-  return body as T;
+  return body as z.output<T>;
 }
 
 // ============ QUERY PARSER ============
 
-export function parseQuery<T>(req: VercelRequest, schema: ZodSchema<T>): T {
+export function parseQuery<T extends z.ZodTypeAny>(req: VercelRequest, schema: T): z.output<T> {
   return schema.parse(req.query);
 }
 

@@ -30,7 +30,7 @@ export default handler(async (req: VercelRequest, res: VercelResponse) => {
     );
 
   // Find matching token by comparing hashes
-  let matchedToken = null;
+  let matchedToken: (typeof tokens)[number] | null = null;
   for (const t of tokens) {
     const valid = await bcrypt.compare(input.token, t.token_hash);
     if (valid) {

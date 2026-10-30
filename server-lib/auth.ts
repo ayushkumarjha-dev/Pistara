@@ -1,12 +1,13 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { SignJWT, jwtVerify } from "jose";
 import { db } from "../db/client";
-import { users } from "../db/schema";
+import { users, addresses } from "../db/schema";
 import { eq } from "drizzle-orm";
 
 // ============ TYPES ============
 
 export interface SessionPayload {
+  [key: string]: unknown;
   sub: string; // user id
   role: "customer" | "admin";
   iat?: number;
@@ -41,7 +42,7 @@ export async function signToken(payload: SessionPayload): Promise<string> {
 export async function verifyToken(token: string): Promise<SessionPayload> {
   try {
     const { payload } = await jwtVerify(token, secret);
-    return payload as SessionPayload;
+    return payload as unknown as SessionPayload;
   } catch (err) {
     throw {
       code: "UNAUTHORIZED",
@@ -130,19 +131,20 @@ export async function checkProfileComplete(userId: string): Promise<boolean> {
   const [user] = await db
     .select({
       mobile: users.mobile,
-      hasAddress: db
-        .select({ count: db.$count() })
-        .from(db.schema.addresses)
-        .where(eq(db.schema.addresses.user_id, userId))
-        .limit(1),
     })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
 
-  if (!user) return false;
+  if (!user || !user.mobile) return false;
 
-  return !!(user.mobile && user.hasAddress);
+  const [address] = await db
+    .select({ id: addresses.id })
+    .from(addresses)
+    .where(eq(addresses.user_id, userId))
+    .limit(1);
+
+  return !!address;
 }
 
 export async function requireCompleteProfile(userId: string) {

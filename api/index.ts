@@ -1,32 +1,32 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 // Import all route handlers
-import authLogin from "./auth/login";
-import authRegister from "./auth/register";
-import authLogout from "./auth/logout";
-import authMe from "./auth/me";
-import authForgot from "./auth/forgot";
-import authReset from "./auth/reset";
+import authLogin from "../api-handlers/auth/login";
+import authRegister from "../api-handlers/auth/register";
+import authLogout from "../api-handlers/auth/logout";
+import authMe from "../api-handlers/auth/me";
+import authForgot from "../api-handlers/auth/forgot";
+import authReset from "../api-handlers/auth/reset";
 
-import productsIndex from "./products/index";
-import productsSlug from "./products/[slug]";
+import productsIndex from "../api-handlers/products/index";
+import productsSlug from "../api-handlers/products/[slug]";
 
-import ordersIndex from "./orders/index";
-import ordersId from "./orders/[id]";
+import ordersIndex from "../api-handlers/orders/index";
+import ordersId from "../api-handlers/orders/[id]";
 
-import categories from "./categories";
-import profile from "./profile";
-import settings from "./settings";
+import categories from "../api-handlers/categories";
+import profile from "../api-handlers/profile";
+import settings from "../api-handlers/settings";
 
 // Admin routes
-import adminCustomersIndex from "./admin/customers/index";
-import adminCustomersId from "./admin/customers/[id]";
-import adminOrdersIndex from "./admin/orders/index";
-import adminOrdersId from "./admin/orders/[id]";
-import adminProductsIndex from "./admin/products/index";
-import adminProductsId from "./admin/products/[id]";
-import adminSettings from "./admin/settings";
-import adminStats from "./admin/stats";
+import adminCustomersIndex from "../api-handlers/admin/customers/index";
+import adminCustomersId from "../api-handlers/admin/customers/[id]";
+import adminOrdersIndex from "../api-handlers/admin/orders/index";
+import adminOrdersId from "../api-handlers/admin/orders/[id]";
+import adminProductsIndex from "../api-handlers/admin/products/index";
+import adminProductsId from "../api-handlers/admin/products/[id]";
+import adminSettings from "../api-handlers/admin/settings";
+import adminStats from "../api-handlers/admin/stats";
 
 export default async function handler(
   req: VercelRequest,
@@ -34,10 +34,19 @@ export default async function handler(
 ) {
   try {
     const method = req.method || "GET";
-    let path = req.url || "/";
+    const rawUrl =
+      req.url && req.url !== "/api" && req.url !== "/api/"
+        ? req.url
+        : ((req.headers["x-matched-path"] as string) ||
+          (req.headers["x-invoke-path"] as string) ||
+          req.url ||
+          "/");
 
-    // Remove query string from path
-    const pathWithoutQuery = path.split("?")[0];
+    // Remove query string from path and normalize trailing slash
+    let pathWithoutQuery = rawUrl.split("?")[0];
+    if (pathWithoutQuery.length > 1 && pathWithoutQuery.endsWith("/")) {
+      pathWithoutQuery = pathWithoutQuery.slice(0, -1);
+    }
 
     // Route matching with dynamic parameters
     

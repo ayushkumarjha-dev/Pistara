@@ -12,7 +12,7 @@ import {
   requireAdmin,
   type AuthenticatedRequest,
 } from "../../../server-lib/auth";
-import { eq, and, gte, lte, like, or, desc, sql } from "drizzle-orm";
+import { eq, and, gte, lte, like, or, desc, sql, type SQL } from "drizzle-orm";
 
 export default handler(async (req: VercelRequest, res: VercelResponse) => {
   if (!methodGuard(req, res, ["GET"])) return;
@@ -22,7 +22,7 @@ export default handler(async (req: VercelRequest, res: VercelResponse) => {
   const query = parseQuery(req, adminOrderQuerySchema);
 
   // Build where conditions
-  const conditions = [];
+  const conditions: SQL<unknown>[] = [];
 
   if (query.status) {
     conditions.push(eq(orders.status, query.status));
@@ -34,7 +34,7 @@ export default handler(async (req: VercelRequest, res: VercelResponse) => {
         like(orders.order_number, `%${query.q}%`),
         like(orders.customer_name, `%${query.q}%`),
         like(orders.customer_mobile, `%${query.q}%`)
-      )
+      )!
     );
   }
 
@@ -56,10 +56,11 @@ export default handler(async (req: VercelRequest, res: VercelResponse) => {
     .offset((query.page - 1) * query.limit);
 
   // Count total
-  const [{ total }] = await db
-    .select({ total: db.$count() })
+  const countResult = await db
+    .select({ total: sql<number>`count(*)` })
     .from(orders)
     .where(conditions.length > 0 ? and(...conditions) : undefined);
+  const total = countResult[0]?.total ?? 0;
 
   json(res, {
     orders: allOrders,

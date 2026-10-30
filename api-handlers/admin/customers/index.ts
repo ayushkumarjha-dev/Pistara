@@ -12,7 +12,7 @@ import {
   requireAdmin,
   type AuthenticatedRequest,
 } from "../../../server-lib/auth";
-import { eq, like, or, desc, sql } from "drizzle-orm";
+import { eq, like, or, desc, sql, and, type SQL } from "drizzle-orm";
 
 export default handler(async (req: VercelRequest, res: VercelResponse) => {
   if (!methodGuard(req, res, ["GET"])) return;
@@ -22,7 +22,7 @@ export default handler(async (req: VercelRequest, res: VercelResponse) => {
   const query = parseQuery(req, customerQuerySchema);
 
   // Build where conditions
-  const conditions = [eq(users.role, "customer")];
+  const conditions: SQL<unknown>[] = [eq(users.role, "customer")];
 
   if (query.q) {
     conditions.push(
@@ -30,7 +30,7 @@ export default handler(async (req: VercelRequest, res: VercelResponse) => {
         like(users.name, `%${query.q}%`),
         like(users.email, `%${query.q}%`),
         like(users.mobile, `%${query.q}%`)
-      )
+      )!
     );
   }
 
@@ -44,7 +44,7 @@ export default handler(async (req: VercelRequest, res: VercelResponse) => {
       created_at: users.created_at,
     })
     .from(users)
-    .where(conditions.length > 0 ? sql`${conditions.join(" AND ")}` : undefined)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(users.created_at))
     .limit(query.limit)
     .offset((query.page - 1) * query.limit);
@@ -65,7 +65,7 @@ export default handler(async (req: VercelRequest, res: VercelResponse) => {
 
     const [stats] = await db
       .select({
-        orderCount: db.$count(),
+        orderCount: sql<number>`count(*)`,
         totalSpent: sql<number>`COALESCE(SUM(${orders.total}), 0)`,
       })
       .from(orders)
@@ -75,10 +75,11 @@ export default handler(async (req: VercelRequest, res: VercelResponse) => {
   }
 
   // Count total
-  const [{ total }] = await db
-    .select({ total: db.$count() })
+  const countResult = await db
+    .select({ total: sql<number>`count(*)` })
     .from(users)
-    .where(conditions.length > 0 ? sql`${conditions.join(" AND ")}` : undefined);
+    .where(conditions.length > 0 ? and(...conditions) : undefined);
+  const total = countResult[0]?.total ?? 0;
 
   json(res, {
     customers: customers.map((c) => {

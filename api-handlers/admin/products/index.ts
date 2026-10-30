@@ -4,6 +4,7 @@ import {
   products,
   product_images,
   product_variants,
+  categories,
 } from "../../../db/schema";
 import { createProductSchema, productQuerySchema } from "../../../shared/schemas";
 import {
@@ -17,7 +18,7 @@ import {
   requireAdmin,
   type AuthenticatedRequest,
 } from "../../../server-lib/auth";
-import { eq, and, isNull, like, desc, asc, sql } from "drizzle-orm";
+import { eq, and, isNull, like, desc, asc, sql, type SQL } from "drizzle-orm";
 
 // Generate slug from name
 function slugify(text: string): string {
@@ -35,13 +36,13 @@ async function handleGet(req: AuthenticatedRequest, res: VercelResponse) {
   const query = parseQuery(req, productQuerySchema);
 
   // Build where conditions (include deleted for admin)
-  const conditions = [];
+  const conditions: SQL<unknown>[] = [];
 
   if (query.category) {
     const [cat] = await db
-      .select({ id: db.schema.categories.id })
-      .from(db.schema.categories)
-      .where(eq(db.schema.categories.slug, query.category))
+      .select({ id: categories.id })
+      .from(categories)
+      .where(eq(categories.slug, query.category))
       .limit(1);
 
     if (cat) {
@@ -83,18 +84,19 @@ async function handleGet(req: AuthenticatedRequest, res: VercelResponse) {
   const variantCounts: Record<string, number> = {};
 
   for (const id of productIds) {
-    const [{ count }] = await db
-      .select({ count: db.$count() })
+    const countRes = await db
+      .select({ count: sql<number>`count(*)` })
       .from(product_variants)
       .where(eq(product_variants.product_id, id));
-    variantCounts[id] = count;
+    variantCounts[id] = countRes[0]?.count ?? 0;
   }
 
   // Count total
-  const [{ total }] = await db
-    .select({ total: db.$count() })
+  const countResult = await db
+    .select({ total: sql<number>`count(*)` })
     .from(products)
     .where(conditions.length > 0 ? and(...conditions) : undefined);
+  const total = countResult[0]?.total ?? 0;
 
   json(res, {
     products: productsData.map((p) => ({

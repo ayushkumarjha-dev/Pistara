@@ -102,7 +102,7 @@ export async function getTestimonials() {
   return testimonials;
 }
 
-export function searchProductsSync(q: string) {
+export function searchProductsSync(q: string): Product[] {
   // This will be replaced with async search in the UI
   // For now, return empty array to trigger proper async search
   return [];

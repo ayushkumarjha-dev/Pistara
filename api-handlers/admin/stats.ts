@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { db } from "../../db/client";
-import { orders, product_variants, users } from "../../db/schema";
+import { orders, product_variants, users, products } from "../../db/schema";
 import { statsQuerySchema } from "../../shared/schemas";
 import {
   handler,
@@ -20,34 +20,39 @@ export default handler(async (req: VercelRequest, res: VercelResponse) => {
   await requireAdmin(req as AuthenticatedRequest);
 
   const query = parseQuery(req, statsQuerySchema);
-  const daysAgo = parseInt(query.range, 10);
+  const range = query.range || "7";
+  const daysAgo = parseInt(range, 10);
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - daysAgo);
 
   // Total orders count
-  const [{ totalOrders }] = await db
-    .select({ totalOrders: db.$count() })
+  const totalOrdersRes = await db
+    .select({ totalOrders: sql<number>`count(*)` })
     .from(orders);
+  const totalOrders = totalOrdersRes[0]?.totalOrders ?? 0;
 
   // Pending orders count
-  const [{ pendingOrders }] = await db
-    .select({ pendingOrders: db.$count() })
+  const pendingOrdersRes = await db
+    .select({ pendingOrders: sql<number>`count(*)` })
     .from(orders)
     .where(eq(orders.status, "PENDING"));
+  const pendingOrders = pendingOrdersRes[0]?.pendingOrders ?? 0;
 
   // Total revenue (only completed/paid orders)
-  const [{ revenue }] = await db
+  const revenueRes = await db
     .select({ revenue: sql<number>`COALESCE(SUM(${orders.total}), 0)` })
     .from(orders)
     .where(
       sql`${orders.status} IN ('PAYMENT_CONFIRMED', 'PACKED', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED')`
     );
+  const revenue = revenueRes[0]?.revenue ?? 0;
 
   // Total customers
-  const [{ totalCustomers }] = await db
-    .select({ totalCustomers: db.$count() })
+  const totalCustomersRes = await db
+    .select({ totalCustomers: sql<number>`count(*)` })
     .from(users)
     .where(eq(users.role, "customer"));
+  const totalCustomers = totalCustomersRes[0]?.totalCustomers ?? 0;
 
   // Low stock variants (stock <= 5)
   const lowStockVariants = await db
@@ -56,7 +61,7 @@ export default handler(async (req: VercelRequest, res: VercelResponse) => {
       product_id: product_variants.product_id,
       label: product_variants.label,
       stock: product_variants.stock,
-      product_name: sql<string>`(SELECT name FROM ${db.schema.products} WHERE id = ${product_variants.product_id})`,
+      product_name: sql<string>`(SELECT name FROM ${products} WHERE id = ${product_variants.product_id})`,
     })
     .from(product_variants)
     .where(
@@ -85,8 +90,8 @@ export default handler(async (req: VercelRequest, res: VercelResponse) => {
   const dailyStats = await db
     .select({
       date: sql<string>`DATE(${orders.created_at} / 1000, 'unixepoch')`,
-      orderCount: db.$count(),
-      revenue: sql<number>`SUM(CASE WHEN ${orders.status} IN ('PAYMENT_CONFIRMED', 'PACKED', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED') THEN ${orders.total} ELSE 0 END)`,
+      orderCount: sql<number>`count(*)`,
+      revenue: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} IN ('PAYMENT_CONFIRMED', 'PACKED', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED') THEN ${orders.total} ELSE 0 END), 0)`,
     })
     .from(orders)
     .where(gte(orders.created_at, startDate))

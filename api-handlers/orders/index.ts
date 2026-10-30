@@ -26,7 +26,7 @@ import {
 } from "../../server-lib/auth";
 import { generateOrderNumber } from "../../server-lib/order-number";
 import { buildWhatsAppOrderUrl } from "../../server-lib/whatsapp";
-import { eq, and, desc, isNull } from "drizzle-orm";
+import { eq, and, desc, isNull, sql } from "drizzle-orm";
 
 async function handlePost(req: AuthenticatedRequest, res: VercelResponse) {
   const session = await requireUser(req);
@@ -267,10 +267,11 @@ async function handleGet(req: AuthenticatedRequest, res: VercelResponse) {
     .offset((query.page - 1) * query.limit);
 
   // Count total
-  const [{ count }] = await db
-    .select({ count: db.$count() })
+  const countResult = await db
+    .select({ count: sql<number>`count(*)` })
     .from(orders)
     .where(and(...conditions));
+  const count = countResult[0]?.count ?? 0;
 
   json(res, {
     orders: userOrders,
